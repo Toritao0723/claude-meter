@@ -11,7 +11,7 @@
 # 在香港等地区会直连失败（403）；本脚本会自动带上你的系统代理，并在失败的那一步给出明确提示。
 
 main() {
-  local url="${CLAUDE_METER_INSTALLER_URL:-https://claude.ai/install.sh}" cli="" country="" host port tmp rc
+  local cli="" country="" host port tmp rc
   stop() { printf '\n\033[31m✗ %s\033[0m\n' "$1"; [ -z "${2:-}" ] || printf '  %s\n' "$2"; exit 1; }
   step() { printf '\n== %s\n' "$1"; }
   find_cli() {
@@ -45,19 +45,37 @@ main() {
   if [ -n "$cli" ]; then
     echo "Already installed · 已安装: $cli"
   else
-    echo "Downloading Anthropic's official installer · 下载官方安装脚本 ($url)"
+    # claude.ai/install.sh simply redirects to this file on Anthropic's download host (byte for byte the same script).
+    # That host is reachable without a proxy even from places where claude.ai itself hangs or answers with an
+    # "unavailable in your region" page, so ask it directly and only fall back to the proxy.
     tmp="$(mktemp)"
-    curl -fsSL -m 60 "$url" -o "$tmp" </dev/null || { rm -f "$tmp"; stop "Could not download the installer · 下载不了安装脚本" "Usually the proxy or region: see the line about your traffic above · 多半是代理或地区问题，见上面的出口地区"; }
-    # From a blocked region claude.ai answers with an "unavailable in your region" web page instead of the script.
-    if ! head -c 2 "$tmp" | grep -q '^#!'; then
-      rm -f "$tmp"
-      stop "What came back is a web page, not the installer · 下载到的是网页，不是安装脚本" "Anthropic shows an 'unavailable in region' page when the traffic does not leave from a supported region. Check that the proxy is on and set to Japan, the US or Singapore · 说明流量没有从受支持的地区出去，请确认代理已开并切到日本、美国或新加坡"
-    fi
-    bash "$tmp" </dev/null; rc=$?
+    local mode source="${CLAUDE_METER_INSTALLER_URL:-https://downloads.claude.ai/claude-code-releases/bootstrap.sh}" t0
+    echo "Anthropic's official installer: $source"
+    echo "The download can take a minute or two · 下载可能需要一两分钟"
+    for mode in direct proxy; do
+      [ "$mode" = proxy ] && [ -z "${HTTPS_PROXY:-}" ] && break
+      t0=$SECONDS
+      echo "• trying $mode · 尝试${mode}连接 ..."
+      if [ "$mode" = direct ]; then
+        curl -fsSL --connect-timeout 8 -m 30 --noproxy '*' "$source" -o "$tmp" </dev/null 2>/dev/null
+      else
+        curl -fsSL --connect-timeout 8 -m 30 "$source" -o "$tmp" </dev/null 2>/dev/null
+      fi || { echo "  could not download it ($((SECONDS - t0))s) · 下载失败"; continue; }
+      # A web page instead of a script means the region page.
+      head -c 2 "$tmp" | grep -q '^#!' || { echo "  got a web page instead of the installer · 得到的是网页"; continue; }
+      if [ "$mode" = direct ]; then
+        env -u HTTPS_PROXY -u HTTP_PROXY -u https_proxy -u http_proxy bash "$tmp" </dev/null; rc=$?
+      else
+        bash "$tmp" </dev/null; rc=$?
+      fi
+      cli="$(find_cli)"
+      [ "$rc" -eq 0 ] && [ -n "$cli" ] && break
+      echo "  the installer did not finish via $mode (exit code $rc) · 安装没有完成"
+      cli=""
+    done
     rm -f "$tmp"
-    cli="$(find_cli)"
-    if [ "$rc" -ne 0 ] || [ -z "$cli" ]; then
-      stop "The installer did not finish (exit code $rc) · 安装没有完成" "Copy everything printed above and send it to whoever is helping you · 请把上面打印的全部内容复制给帮你的人"
+    if [ -z "$cli" ]; then
+      stop "Claude Code could not be installed · 没能装上 Claude Code" "Copy everything printed above and send it to whoever is helping you · 请把上面打印的全部内容复制给帮你的人"
     fi
     echo "Installed · 已安装: $cli"
   fi
@@ -76,6 +94,11 @@ main() {
   if signed_in "$cli"; then
     printf '\n\033[32m✓ Done.\033[0m Claude Meter shows your quota within about a minute. · 完成，约一分钟内小螃蟹会显示额度。\n'
     echo "If macOS asks about \"Claude Code-credentials\", choose Always Allow. · 如果 macOS 弹窗询问 Claude Code-credentials，请选「始终允许」。"
+    if ! command -v claude >/dev/null 2>&1; then
+      echo
+      echo "Optional: to type 'claude' in Terminal, add it to your PATH (Claude Meter does not need this) · 可选：想在终端里直接输入 claude，请运行下面这行（小螃蟹不需要）："
+      printf '  %s\n' "echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.zshrc && source ~/.zshrc"
+    fi
   else
     stop "Not signed in yet · 还没有登录成功" "Run again, or:  HTTPS_PROXY=${HTTPS_PROXY:-<your proxy>} $cli auth login"
   fi
