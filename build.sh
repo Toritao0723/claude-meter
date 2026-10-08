@@ -15,7 +15,17 @@ p=pathlib.Path.cwd()
 PY
   EXTRA=(-vfsoverlay .build/overlay.yaml)
 fi
-swiftc -O -swift-version 5 "${EXTRA[@]}" -module-cache-path .build/cache Meter.swift -o "$APP/Contents/MacOS/ClaudeMeter" -framework Cocoa -framework WebKit -framework ServiceManagement -framework UserNotifications
+# One app for both kinds of Mac: build each architecture, then join them (an architecture the toolchain cannot build is skipped).
+slices=()
+for arch in arm64 x86_64; do
+  if swiftc -O -swift-version 5 "${EXTRA[@]}" -module-cache-path .build/cache -target "$arch-apple-macos13.0" Meter.swift -o ".build/ClaudeMeter-$arch" -framework Cocoa -framework WebKit -framework ServiceManagement -framework UserNotifications; then
+    slices+=(".build/ClaudeMeter-$arch")
+  else
+    echo "skipping $arch"
+  fi
+done
+[ ${#slices[@]} -gt 0 ] || { echo "build failed"; exit 1; }
+lipo -create "${slices[@]}" -output "$APP/Contents/MacOS/ClaudeMeter"
 cp -R ui "$APP/Contents/Resources/"
 cp bridge.py "$APP/Contents/Resources/"
 cat > "$APP/Contents/Info.plist" <<'PLIST'

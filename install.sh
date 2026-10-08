@@ -9,10 +9,9 @@ set -euo pipefail
 REPO="Toritao0723/claude-meter"
 DEST="${CLAUDE_METER_DIR:-$HOME/Applications}"
 BASE="https://github.com/$REPO/releases/latest/download"
-ZIP="Claude-Meter-macOS-arm64.zip"
+ZIP="Claude-Meter-macOS.zip"      # one build for Apple Silicon and Intel Macs
 
 [ "$(uname -s)" = "Darwin" ] || { echo "Claude Meter is a macOS app."; exit 1; }
-[ "$(uname -m)" = "arm64" ] || { echo "This build is for Apple Silicon Macs (M1 or newer)."; exit 1; }
 [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 13 ] || { echo "Claude Meter needs macOS 13 or newer."; exit 1; }
 
 work="$(mktemp -d)"

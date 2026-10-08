@@ -143,7 +143,7 @@ class RenewTests(unittest.TestCase):
         self.assertEqual(env['HTTPS_PROXY'], 'http://127.0.0.1:7897')
 
     def test_every_error_code_has_a_message(self):
-        for code in ('signed-out', 'login-expired', 'expired', 'http 403', 'network'):
+        for code in ('signed-out', 'login-expired', 'expired', 'http 403', 'http 429', 'network'):
             self.assertIn(code, bridge.PROBLEMS)
 
 

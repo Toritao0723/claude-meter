@@ -156,6 +156,7 @@ PROBLEMS = {
     'login-expired': '登录已过期，自动续期未成功；请检查网络节点，或在终端运行 claude auth login',
     'expired': '登录已过期，且自动续期已关闭',
     'http 403': '访问被拒绝（403），请切换到 Claude 支持地区的网络节点',
+    'http 429': '请求过于频繁，稍后会自动重试',
     'network': '同步失败，请检查网络连接',
 }
 
@@ -377,11 +378,13 @@ def main():
                 tmp.write_text(json.dumps(data))
                 os.chmod(tmp, 0o600)
                 tmp.replace(STATE / 'usage.json')
+                pause = 60
             except Exception as error:
                 code = str(error) if str(error) in PROBLEMS else 'network'
                 with lock:
                     current.update(live=False, liveProblem=PROBLEMS[code], liveProblemCode=code)
-            refresh.wait(60)
+                pause = 180 if code == 'http 429' else 60      # rate limited: back off instead of asking again in a minute
+            refresh.wait(pause)
             refresh.clear()
 
     def input_loop():

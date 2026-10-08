@@ -158,6 +158,7 @@
     'login-expired': [['登录已过期', 'login expired'],     ['自动续期未成功：检查网络节点，或在终端运行 claude auth login', 'Auto-renew did not work: check your proxy region, or run "claude auth login" in a terminal']],
     'expired':       [['登录已过期', 'login expired'],     ['右键菜单里打开「自动续期登录」', 'Turn on "Auto-renew sign-in" in the right-click menu']],
     'http 403':      [['地区受限', 'region blocked'],      ['Anthropic 不支持当前网络地区：请换到支持地区的代理节点', 'Anthropic blocks this region: switch your proxy to a supported one']],
+    'http 429':      [['请求太频繁', 'rate limited'],      ['请求过于频繁，稍后会自动重试', 'Too many requests: it will retry by itself shortly']],
     'network':       [['网络不通', 'no connection'],       ['检查网络连接或代理', 'Check your internet connection or proxy']],
   };
   function liveStatus() {

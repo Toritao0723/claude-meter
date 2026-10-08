@@ -22,7 +22,7 @@ A tiny desktop crab for macOS that shows your **remaining Claude quota** live an
 
 ## Install
 
-Requirements: macOS 13+, Apple Silicon, Claude Code, and a Claude subscription.
+Requirements: macOS 13+ (Apple Silicon or Intel), Claude Code, and a Claude subscription. The Intel half of the app was smoke-tested under Rosetta (it launches, syncs and shows the quota) but not yet on a real Intel Mac.
 
 **One command** (downloads the latest release, checks its checksum, installs to `~/Applications` and opens it; [read the script](install.sh) first if you like):
 
@@ -36,7 +36,7 @@ Or step by step:
    ```sh
    claude auth login
    ```
-2. **Download** `Claude-Meter-v1.6.0-macOS-arm64.zip` from [Releases](../../releases), unzip it, and move `Claude Meter.app` to `~/Applications`.
+2. **Download** `Claude-Meter-macOS.zip` from [Releases](../../releases), unzip it, and move `Claude Meter.app` to `~/Applications`.
 3. **Open it.** The app is ad-hoc signed, not Apple-notarized, so the first time: right-click the app → **Open** → **Open**. Or run:
    ```sh
    xattr -dr com.apple.quarantine "$HOME/Applications/Claude Meter.app"
