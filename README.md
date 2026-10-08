@@ -24,6 +24,14 @@ A tiny desktop crab for macOS that shows your **remaining Claude quota** live an
 
 Requirements: macOS 13+, Apple Silicon, Claude Code, and a Claude subscription.
 
+**One command** (downloads the latest release, checks its checksum, installs to `~/Applications` and opens it; [read the script](install.sh) first if you like):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Toritao0723/claude-meter/main/install.sh | bash
+```
+
+Or step by step:
+
 1. **Sign in Claude Code once** (the meter uses this sign-in to read your quota):
    ```sh
    claude auth login
