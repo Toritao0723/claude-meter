@@ -37,6 +37,16 @@ main() {
     bad "/usr/bin/python3 does not run · 不能运行"; note "xcode-select --install"
   fi
 
+  # Commands typed in Terminal (the Claude Code installer and its login) do not use the macOS system proxy by themselves,
+  # so from a blocked region they go out directly and fail with 403. When a system proxy exists, put it into the hints below.
+  local PX="" install_cmd="curl -fsSL https://claude.ai/install.sh | bash" login_cmd="~/.local/bin/claude auth login"
+  if scutil --proxy 2>/dev/null | grep -q 'HTTPSEnable : 1'; then
+    local sh sp
+    sh="$(scutil --proxy | awk '/HTTPSProxy :/ {print $3}')"; sp="$(scutil --proxy | awk '/HTTPSPort :/ {print $3}')"
+    PX="HTTPS_PROXY=http://$sh:$sp HTTP_PROXY=http://$sh:$sp"
+    install_cmd="export $PX && $install_cmd"; login_cmd="$PX $login_cmd"
+  fi
+
   echo "4. Claude Code (the meter reads ITS sign-in, not the Claude desktop app's · 额度用的是 Claude Code 的登录，不是 Claude 桌面版的登录)"
   for c in "${CLAUDE_METER_CLI:-}" "$HOME/.local/bin/claude" "$HOME/.claude/local/claude" /opt/homebrew/bin/claude /usr/local/bin/claude "$HOME/.npm-global/bin/claude" "$HOME/.bun/bin/claude"; do
     if [ -n "$c" ] && [ -x "$c" ]; then cli="$c"; break; fi
@@ -44,15 +54,16 @@ main() {
   [ -n "$cli" ] || cli="$(command -v claude 2>/dev/null || true)"
   if [ -z "$cli" ]; then
     bad "Claude Code is not installed · 没有安装 Claude Code"
-    note "curl -fsSL https://claude.ai/install.sh | bash      (docs: https://code.claude.com/docs/en/setup)"
-    note "then / 然后:  claude auth login"
+    note "$install_cmd"
+    note "then / 然后:  $login_cmd"
+    [ -z "$PX" ] || note "(the proxy part is needed because Terminal does not use the system proxy by itself · 加代理是因为终端不会自动走系统代理) docs: https://code.claude.com/docs/en/setup"
   else
     ok "found · 已找到: $cli ($("$cli" --version </dev/null 2>/dev/null | head -1))"
     if "$cli" auth status </dev/null 2>/dev/null | grep -q '"loggedIn": true'; then
       ok "signed in · 已登录"
     else
       bad "not signed in · 没有登录"
-      note "claude auth login      (a browser opens; sign in with the account whose quota you want to see · 浏览器会打开，登录要看额度的账号)"
+      note "${login_cmd/\~\/.local\/bin\/claude/$cli}      (a browser opens; sign in with the account whose quota you want to see · 浏览器会打开，登录要看额度的账号)"
       note "use a network node in a supported region such as Japan · 请用日本等受支持地区的网络节点"
     fi
   fi

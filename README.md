@@ -71,7 +71,7 @@ The footer of the full panel also says why it is not synced (hover it for what t
 
 | The footer says | What it means | Fix |
 |---|---|---|
-| sign in again · 请重新登录 | Claude Code is not installed or not signed in on this Mac. The meter reads **Claude Code's** sign-in, not the Claude desktop app's. | Install Claude Code (`curl -fsSL https://claude.ai/install.sh \| bash`), then run `claude auth login` |
+| sign in again · 请重新登录 | Claude Code is not installed or not signed in on this Mac. The meter reads **Claude Code's** sign-in, not the Claude desktop app's. | Install Claude Code (`curl -fsSL https://claude.ai/install.sh \| bash`), then run `claude auth login`. **Behind a proxy app (Clash...), Terminal does not use the system proxy by itself**, so from Hong Kong both commands fail with 403: put `HTTPS_PROXY=http://127.0.0.1:7897 HTTP_PROXY=http://127.0.0.1:7897` (your proxy's port) in front of them. The self-check prints the exact commands for your Mac |
 | login expired · 登录已过期 | The 8-hour sign-in ran out and renewing it did not work | Check your proxy region, or run `claude auth login` again |
 | region blocked · 地区受限 | Anthropic answered 403: your network exits from an unsupported region (Hong Kong, mainland China...) | Switch your proxy node to Japan, the US or Singapore |
 | no connection · 网络不通 | No route to Anthropic | Check your internet connection or proxy |
