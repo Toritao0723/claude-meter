@@ -109,7 +109,7 @@ html.mini .lane { margin:0; height:68px; border-radius:10px; }
 html.mini .controls { position:static; grid-area:btn; flex-direction:column; gap:6px; }
 html.mini .icon-btn { width:22px; height:22px; border-radius:7px; }
 html.mini .sync-btn, html.mini .lang-btn { display:none; }
-html.mini .mini-live { display:block; font-size:11px; font-weight:500; white-space:nowrap; margin-top:1px; }
+html.mini .mini-live { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; font-size:11px; font-weight:500; white-space:nowrap; margin-top:1px; }
 html.mini .task-nav { height:23px; padding-bottom:5px; margin-bottom:5px; }
 
 /* Pet-only mode preserves the character's normal proportions and scene scale. */

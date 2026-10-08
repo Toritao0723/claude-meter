@@ -162,11 +162,11 @@
     for (const el of [foot, mini]) { el.classList.toggle('live', !!live); el.classList.toggle('stale', !live); }
     if (live) {
       foot.innerHTML = L(`<i class="dot"></i><b>实时</b> · ${since(d.liveAt)}前更新`, `<i class="dot"></i><b>Live</b> · updated ${since(d.liveAt)} ago`);
-      mini.innerHTML = L(`<i class="dot"></i>实时 · ${since(d.liveAt)}前更新`, `<i class="dot"></i>Live · ${since(d.liveAt)} ago`);
+      mini.innerHTML = L(`<i class="dot"></i>实时 · ${since(d.liveAt)}前`, `<i class="dot"></i>Live · ${since(d.liveAt)} ago`);
     } else {
       const why = last ? L(`上次 ${since(last)}前`, `last ${since(last)} ago`) : L('点击刷新', 'click to refresh');
       foot.innerHTML = `<b>${L('待同步', 'Not synced')}</b> · ${why}`;
-      mini.innerHTML = `${L('待同步', 'Not synced')}${last ? ` · ${L(`${since(last)}前`, `${since(last)} ago`)}` : ''}`;
+      mini.innerHTML = L('待同步', 'Not synced');   // compact bar is narrow: status word only, the time stays in the tooltip and full panel
     }
   }
 
