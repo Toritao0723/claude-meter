@@ -1,4 +1,4 @@
-// Claude adaptation of Claude Meter. Original UI © 2026 Bon Yeung.
+// Claude Meter. Based on Bon Yeung's Claude-Meter; original UI © 2026 Bon Yeung.
 import Cocoa
 import WebKit
 import ServiceManagement

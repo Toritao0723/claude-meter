@@ -1,4 +1,4 @@
-/* Codex Meter — native macOS glass, with Bon Yeung's original pixel character. */
+/* Claude Meter — native macOS glass, with Bon Yeung's original pixel character. */
 :root, :root[data-theme="dark"] {
   color-scheme:dark;
   --bg:rgba(25,27,31,.08); --bg-2:rgba(0,0,0,.10);

@@ -1,5 +1,5 @@
 // Original Clawd pixel silhouette © 2026 Bon Yeung (Claude-Meter).
-// Local Codex adaptation: activity scenes, props, and shared animation renderer.
+// Local adaptation: activity scenes, props, and shared animation renderer.
 (() => {
   const busy = ['typing', 'cooking', 'tennis', 'photo', 'flight'];
   const titles = { typing:'小螃蟹在打电脑', cooking:'小螃蟹在做饭', tennis:'小螃蟹在打网球', photo:'小螃蟹举起相机拍照', flight:'小螃蟹开飞机', music:'听听歌，等你回来', done:'完成啦，撒花！', pause:'小螃蟹休息一下', unknown:'稍候片刻' };
