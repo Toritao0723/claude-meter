@@ -52,7 +52,7 @@ JavaScript tests, if Node.js is installed: `node --test test_task_nav.cjs test_p
 
 - **Region:** Anthropic rejects requests from unsupported regions (for example Hong Kong): `claude auth login` fails with 403 and the meter shows a sync error. Use a network in a supported region. The meter follows the macOS system proxy.
 - **Pink number = not synced.** If a refresh fails (offline, signed out, region), the number turns pink and the footer says so. A stale number never passes for a live one.
-- **Sign-in renews itself** whenever you use Claude Code. If it expires, the meter tells you to send Claude Code a message.
+- **The sign-in lasts about 8 hours.** Claude Code renews it whenever the `claude` command-line tool starts; Claude Meter does not renew it for you. After a long idle, or if you only use the Claude desktop app, the meter shows *Not synced*. To renew it at no cost, run `claude -p /usage` in a terminal (it prints "Unknown skill", uses no tokens, and refreshes the sign-in); the meter picks the new sign-in up within a minute.
 - **Privacy:** the access token is read locally from the macOS Keychain (or `~/.claude/.credentials.json`) and sent only to Anthropic's official read-only usage endpoint. Session tracking reads only `~/.claude/projects/*.jsonl` on this Mac. No model requests, no analytics, nothing else leaves your Mac.
 - "Done" means the current response turn ended, not that the whole project is finished.
 
