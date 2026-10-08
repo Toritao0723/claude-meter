@@ -32,10 +32,15 @@ xattr -dr com.apple.quarantine "$DEST/Claude Meter.app" 2>/dev/null || true
 codesign --verify --deep "$DEST/Claude Meter.app"
 echo "Installed: $DEST/Claude Meter.app"
 
+if ! xcode-select -p >/dev/null 2>&1; then
+  echo
+  echo "Apple's Command Line Tools are missing; the meter's helper needs Python 3 from them. Run:  xcode-select --install"
+fi
+
 if ! command -v claude >/dev/null 2>&1 && [ ! -x "$HOME/.local/bin/claude" ]; then
   echo
-  echo "Claude Code was not found. The meter reads (and renews) its sign-in, so install it first:"
-  echo "  https://claude.com/claude-code"
+  echo "Claude Code was not found. The meter reads (and renews) ITS sign-in, not the Claude desktop app's, so install it first:"
+  echo "  curl -fsSL https://claude.ai/install.sh | bash        (docs: https://code.claude.com/docs/en/setup)"
 fi
 
 if [ "${CLAUDE_METER_NO_OPEN:-0}" != "1" ]; then
@@ -49,4 +54,7 @@ Next:
      (Anthropic blocks some regions, e.g. Hong Kong: use a network node in a supported region such as Japan.)
   2. If macOS asks about the "Claude Code-credentials" keychain item, choose Always Allow.
   3. The crab shows your remaining Claude quota within a minute. Right-click it for options.
+
+Quota not showing? This checks every step and says which one fails:
+  curl -fsSL https://raw.githubusercontent.com/Toritao0723/claude-meter/main/doctor.sh | bash
 EOF

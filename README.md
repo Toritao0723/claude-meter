@@ -59,6 +59,25 @@ open "$HOME/Applications/Claude Meter.app"
 
 JavaScript tests, if Node.js is installed: `node --test test_task_nav.cjs test_pet.cjs`.
 
+## Quota not showing?
+
+Run the self-check. It tests every step and says which one fails (it prints no tokens and changes nothing):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Toritao0723/claude-meter/main/doctor.sh | bash
+```
+
+The footer of the full panel also says why it is not synced (hover it for what to do):
+
+| The footer says | What it means | Fix |
+|---|---|---|
+| sign in again · 请重新登录 | Claude Code is not installed or not signed in on this Mac. The meter reads **Claude Code's** sign-in, not the Claude desktop app's. | Install Claude Code (`curl -fsSL https://claude.ai/install.sh \| bash`), then run `claude auth login` |
+| login expired · 登录已过期 | The 8-hour sign-in ran out and renewing it did not work | Check your proxy region, or run `claude auth login` again |
+| region blocked · 地区受限 | Anthropic answered 403: your network exits from an unsupported region (Hong Kong, mainland China...) | Switch your proxy node to Japan, the US or Singapore |
+| no connection · 网络不通 | No route to Anthropic | Check your internet connection or proxy |
+| rate limited · 请求太频繁 | Too many requests in a short time | Nothing: it retries by itself in a few minutes |
+| (the meter does not appear at all) | Apple's Command Line Tools may be missing, which the helper needs for Python 3 | `xcode-select --install`, then reopen Claude Meter |
+
 ## Good to know
 
 - **Region:** Anthropic rejects requests from unsupported regions (for example Hong Kong): `claude auth login` fails with 403 and the meter shows a sync error. Use a network in a supported region. The meter follows the macOS system proxy.
