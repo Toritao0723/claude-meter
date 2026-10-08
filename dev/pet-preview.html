@@ -1,0 +1,12 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>Codex Meter · 动作预览</title>
+<style>
+*{box-sizing:border-box}body{margin:0;padding:28px;background:#22262e;color:#eee;font-family:-apple-system,system-ui,sans-serif}h1{font-size:21px;font-weight:500;margin:0 0 20px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;max-width:950px}.tile{background:#343b46;border-radius:18px;padding:16px}canvas{display:block;width:100%;height:156px;image-rendering:pixelated}h2{font-size:15px;margin:8px 0;font-weight:500}p{font-size:12px;color:#ccd3dc}button{font:inherit;padding:8px 12px}nav{display:flex;gap:16px;margin-top:24px}a{color:#aad1e8}footer{margin-top:22px;color:#b8c3cb;font-size:12px}
+</style><h1>小螃蟹 · 忙碌 / 等待 / 庆祝</h1><div class="grid"></div>
+<nav><button id="pause">暂停动画</button><a href="../ui/index.html?activity=working">完整面板</a><a href="../ui/index.html?activity=waiting&mini=1">迷你等待</a><a href="../ui/index.html?activity=done&mini=1">完成导航</a><a href="../ui/index.html?minimized=1">最小化</a></nav>
+<footer>Codex 桌面伴侣 · 此页为演示数据</footer>
+<script src="../ui/pattern-field.js"></script>
+<script src="../ui/texture.js"></script><script src="../ui/pet.js"></script><script>
+const scenes=[['typing','打电脑','键盘敲击、屏幕代码与咖啡'],['cooking','做饭','厨师帽、搅拌与冒热气的锅'],['tennis','打网球','球拍、挥拍与来回运动的球'],['photo','拍照','举起相机、镜头与轻微闪光'],['flight','开飞机','飞行帽、螺旋桨、字符雪山与树林'],['music','听歌等待','耳机、轻轻摇摆与音符'],['done','完成撒花','小螃蟹跳起与彩色纸屑']];
+let paused=false;const cards=scenes.map(([scene,title,desc])=>{const tile=document.createElement('section');tile.className='tile';tile.innerHTML=`<canvas aria-label="${title}"></canvas><h2>${title}</h2><p>${desc}</p>`;document.querySelector('.grid').append(tile);return {scene,canvas:tile.querySelector('canvas')};});
+function draw(){for(const c of cards) CrabPet.draw(c.canvas,{scene:c.scene,time:Date.now(),theme:'dark',reduced:paused});}setInterval(draw,150);draw();document.querySelector('#pause').onclick=()=>{paused=!paused;document.querySelector('#pause').textContent=paused?'播放动画':'暂停动画';draw();};
+</script></html>

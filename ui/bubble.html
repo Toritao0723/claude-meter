@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-Hans" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Claude Meter 任务提醒</title>
+<link rel="stylesheet" href="meter.css">
+<style>
+  html, body { margin:0; background:transparent; overflow:hidden; }
+  .bubble { box-sizing:border-box; width:270px; padding:12px; display:none; border-radius:18px;
+    background:linear-gradient(145deg,var(--glass-sheen),var(--bg)); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif; }
+  .bubble.on { display:block; }
+  .heading { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:7px; }
+  h1 { margin:0; font-size:12px; font-weight:650; }
+  .hint { color:var(--muted); font-size:10px; }
+  .task-items { display:grid; gap:3px; max-height:258px; overflow:auto; }
+  .task-item { display:flex; width:100%; align-items:flex-start; gap:9px; padding:7px 0; border:0; border-radius:6px;
+    background:transparent; color:var(--fg); text-align:left; font:inherit; cursor:pointer; }
+  .task-item:hover { background:var(--surface); }
+  .task-item:focus-visible { outline:2px solid var(--focus); outline-offset:1px; }
+  .name { flex:1; min-width:0; font-size:12px; line-height:1.4; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+  .state { flex:none; font-size:10px; line-height:1.5; padding:1px 5px; border-radius:5px; color:var(--live); background:var(--surface); }
+  .task-item[data-state="waiting"] .state, .bubble[data-state="waiting"] h1 { color:var(--warn); }
+  .task-item[data-state="error"] .state, .task-item[data-state="warning"] .state { color:var(--warn); }
+  .task-item[data-state="interrupted"] .state { color:var(--muted); }
+</style>
+</head>
+<body>
+  <section class="bubble" id="bubble" role="status" aria-live="polite">
+    <header class="heading"><h1 id="heading">任务状态</h1><span class="hint">点击查看</span></header>
+    <div class="task-items" id="taskItems"></div>
+  </section>
+<script src="bubble.js"></script>
+</body>
+</html>

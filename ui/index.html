@@ -1,0 +1,81 @@
+<!doctype html>
+<!-- Based on Claude-Meter by Bon Yeung, © 2026. Source credit: UPSTREAM.md. -->
+<html lang="zh-Hans" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Meter</title>
+<link rel="stylesheet" href="meter.css">
+</head>
+<body>
+  <main class="card" id="card" data-mood="ok">
+    <nav class="task-nav" id="taskNav" aria-label="当前任务" hidden>
+      <span class="task-state" id="taskState"></span>
+      <button class="task-title" id="taskTitle" type="button"></button>
+      <div class="task-pages" id="taskPages">
+        <button class="nav-btn" id="prevTask" type="button" aria-label="上一个任务" title="上一个任务">‹</button>
+        <span id="taskIndex" aria-live="polite"></span>
+        <button class="nav-btn" id="nextTask" type="button" aria-label="下一个任务" title="下一个任务">›</button>
+      </div>
+    </nav>
+    <header class="head">
+      <span class="sticker">CLAUDE</span>
+      <span class="label" id="plan">账户额度</span>
+    </header>
+
+    <div class="controls">
+    <button class="icon-btn lang-btn" id="langBtn" type="button" aria-label="Switch to English" title="Switch to English">EN</button>
+    <button class="icon-btn sync-btn" id="syncBtn" type="button" aria-label="立即刷新" title="立即刷新">
+      <svg viewBox="0 0 8 8" aria-hidden="true"><path d="M2 1h4v1h1v2H6V2H2v1H1V2h1zM1 4h1v2h4V5h1v1H6v1H2V6H1z"/><path d="M5 0h1v3H5zM2 5h1v3H2z"/></svg>
+    </button>
+    <button class="icon-btn" id="sizeBtn" type="button" aria-label="切换迷你模式" title="迷你模式">
+      <svg viewBox="0 0 8 8" aria-hidden="true"><rect x="1" y="5" width="6" height="2"/></svg>
+    </button>
+
+    <button class="icon-btn" id="minimizeBtn" type="button" aria-label="最小化，只留小螃蟹" title="最小化，只留小螃蟹">
+      <svg viewBox="0 0 8 8" aria-hidden="true"><rect x="1" y="4" width="6" height="1"/></svg>
+    </button>
+    </div>
+
+    <div class="left" id="quota">
+      <span class="quota-value"><span class="big" id="left">--</span><span class="tiny-unit">%</span></span><span class="big-unit" id="leftUnit">% 剩余</span>
+    </div>
+
+    <div class="reset">
+      <span class="label" id="resetLabel">重置倒计时</span>
+      <span class="count" id="count">--</span>
+      <span class="label at" id="resetAt"></span>
+      <span class="mini-live" id="miniLive"></span>
+    </div>
+
+    <div class="lane" id="laneBox" role="button" tabindex="0" title="进行中每 16 秒换一个忙碌场景，也可以点击切换。等待时听歌，完成时撒花。">
+      <canvas id="lane" aria-hidden="true"></canvas>
+    </div>
+    <div class="tags">
+      <span id="petTitle">小螃蟹准备中</span>
+      <span id="petStatus">连接中</span>
+    </div>
+
+    <section class="week" aria-label="额度明细">
+      <div class="wrow">
+        <span class="label strong" id="wLabel">额度明细</span>
+        <span class="wleft" id="wLeft">--</span>
+      </div>
+      <div class="wbar"><i id="wFill"></i></div>
+      <div class="wrow">
+        <span class="label" id="wUsed">Used --</span>
+        <span class="label" id="wReset">Resets --</span>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <span id="foot"></span>
+    </footer>
+  </main>
+<script src="pattern-field.js"></script>
+<script src="texture.js"></script>
+<script src="pet.js"></script>
+<script src="task-nav.js"></script>
+<script src="meter.js"></script>
+</body>
+</html>
