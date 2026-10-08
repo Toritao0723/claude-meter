@@ -65,7 +65,8 @@ main() {
   else
     ok "no system proxy (direct connection) · 没有系统代理（直连）"
   fi
-  country="$(curl -s -m 10 "${proxy_arg[@]}" https://ipinfo.io/country </dev/null 2>/dev/null | tr -d '[:space:]')"
+  # NO_PROXY in the environment would make curl skip the proxy and report the wrong country; the app ignores it too.
+  country="$(env -u NO_PROXY -u no_proxy curl -s -m 10 "${proxy_arg[@]}" https://ipinfo.io/country </dev/null 2>/dev/null | tr -d '[:space:]')"
   if [ -z "$country" ]; then
     bad "cannot reach the internet through this connection · 当前网络连不上"
   elif printf '%s' "$country" | grep -qE '^(HK|CN|MO|RU|BY|IR|KP|CU|SY)$'; then
