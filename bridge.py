@@ -12,6 +12,8 @@ import time
 import urllib.error
 import urllib.request
 
+urllib.request.proxy_bypass = lambda host: False   # we only talk to api.anthropic.com; never bypass the proxy
+
 HOME = Path.home()
 CLAUDE_HOME = Path(os.environ.get('CLAUDE_CONFIG_DIR', str(HOME / '.claude')))
 STATE = HOME / 'Library/Application Support/Claude Meter'
@@ -88,6 +90,25 @@ def read_token():
     raise RuntimeError('signed-out')
 
 
+def _opener():
+    """Route through the proxy the Mac is actually using.
+
+    Python ignores the macOS system proxy as soon as any *_proxy variable exists in the environment
+    (even NO_PROXY=* or an empty HTTPS_PROXY inherited from a terminal), which silently sends the
+    request out directly. In unsupported regions Anthropic then answers 403, so look at both sources.
+    """
+    env = {k: v for k, v in urllib.request.getproxies_environment().items() if k in ('http', 'https') and v}
+    system = {}
+    if sys.platform == 'darwin':
+        try:
+            system = {k: v for k, v in urllib.request.getproxies_macosx_sysconf().items() if k in ('http', 'https') and v}
+        except Exception:
+            pass
+    proxies = env or system
+    handlers = [urllib.request.ProxyHandler(proxies)] if proxies else [urllib.request.ProxyHandler({})]
+    return urllib.request.build_opener(*handlers)
+
+
 def fetch_usage():
     token, expires = read_token()
     if isinstance(expires, (int, float)) and expires / 1000 < time.time():
@@ -96,7 +117,7 @@ def fetch_usage():
         'Authorization': f'Bearer {token}', 'anthropic-beta': 'oauth-2025-04-20',
         'Content-Type': 'application/json', 'User-Agent': 'claude-meter/1.0'})
     try:
-        with urllib.request.urlopen(request, timeout=20) as response:
+        with _opener().open(request, timeout=20) as response:
             return json.load(response)
     except urllib.error.HTTPError as error:
         raise RuntimeError('expired' if error.code == 401 else f'http {error.code}')
