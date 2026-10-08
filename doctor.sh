@@ -54,16 +54,18 @@ main() {
   [ -n "$cli" ] || cli="$(command -v claude 2>/dev/null || true)"
   if [ -z "$cli" ]; then
     bad "Claude Code is not installed · 没有安装 Claude Code"
-    note "$install_cmd"
-    note "then / 然后:  $login_cmd"
-    [ -z "$PX" ] || note "(the proxy part is needed because Terminal does not use the system proxy by itself · 加代理是因为终端不会自动走系统代理) docs: https://code.claude.com/docs/en/setup"
+    note "curl -fsSL https://raw.githubusercontent.com/Toritao0723/claude-meter/main/setup-claude-code.sh | bash"
+    note "(installs Claude Code with your system proxy filled in, then signs in · 自动带上系统代理安装 Claude Code，然后登录)"
+    note "by hand instead / 手动方式:  $install_cmd   then / 然后   $login_cmd"
   else
     ok "found · 已找到: $cli ($("$cli" --version </dev/null 2>/dev/null | head -1))"
     if "$cli" auth status </dev/null 2>/dev/null | grep -q '"loggedIn": true'; then
       ok "signed in · 已登录"
     else
       bad "not signed in · 没有登录"
-      note "${login_cmd/\~\/.local\/bin\/claude/$cli}      (a browser opens; sign in with the account whose quota you want to see · 浏览器会打开，登录要看额度的账号)"
+      note "curl -fsSL https://raw.githubusercontent.com/Toritao0723/claude-meter/main/setup-claude-code.sh | bash"
+      note "(a browser opens; sign in with the account whose quota you want to see · 浏览器会打开，登录要看额度的账号)"
+      note "by hand instead / 手动方式:  ${login_cmd/\~\/.local\/bin\/claude/$cli}"
       note "use a network node in a supported region such as Japan · 请用日本等受支持地区的网络节点"
     fi
   fi

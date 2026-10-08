@@ -40,7 +40,8 @@ fi
 if ! command -v claude >/dev/null 2>&1 && [ ! -x "$HOME/.local/bin/claude" ]; then
   echo
   echo "Claude Code was not found. The meter reads (and renews) ITS sign-in, not the Claude desktop app's, so install it first:"
-  echo "  curl -fsSL https://claude.ai/install.sh | bash        (docs: https://code.claude.com/docs/en/setup)"
+  echo "  curl -fsSL https://raw.githubusercontent.com/Toritao0723/claude-meter/main/setup-claude-code.sh | bash"
+  echo "  (it installs Claude Code, uses your system proxy automatically, and signs in; from Hong Kong a plain install fails)"
 fi
 
 if [ "${CLAUDE_METER_NO_OPEN:-0}" != "1" ]; then
@@ -50,8 +51,9 @@ fi
 cat <<'EOF'
 
 Next:
-  1. Sign in Claude Code once, if you have not:   claude auth login
-     (Anthropic blocks some regions, e.g. Hong Kong: use a network node in a supported region such as Japan.)
+  1. Install and sign in Claude Code once, if you have not (the meter reads ITS sign-in):
+       curl -fsSL https://raw.githubusercontent.com/Toritao0723/claude-meter/main/setup-claude-code.sh | bash
+     (Anthropic blocks some regions, e.g. Hong Kong: use a proxy node in a supported region such as Japan.)
   2. If macOS asks about the "Claude Code-credentials" keychain item, choose Always Allow.
   3. The crab shows your remaining Claude quota within a minute. Right-click it for options.
 
