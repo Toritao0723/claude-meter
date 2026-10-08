@@ -6,6 +6,9 @@ A tiny desktop crab for macOS that shows your **remaining Claude quota** live an
 
 一只 macOS 桌面小螃蟹：实时显示 **Claude 剩余额度**，陪你等 Claude Code 干活。
 
+> **Two apps, two download pages.** This page is for **Claude**. Using Codex? Get the Codex version at **[Toritao0723/codex-meter](https://github.com/Toritao0723/codex-meter)**.
+> 这里是 **Claude 版**；想要 **Codex 版**请去 [codex-meter](https://github.com/Toritao0723/codex-meter) 下载。
+
 | Full panel | Compact |
 |---|---|
 | ![Claude Meter full panel](media/claude-meter-en.png) | ![Claude Meter compact](media/claude-meter-compact-en.png) |
