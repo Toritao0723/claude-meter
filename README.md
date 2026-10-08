@@ -1,3 +1,5 @@
+![Claude Meter — a tiny desktop crab that watches your Claude quota](media/claude-meter-banner.png)
+
 # Claude Meter 🦀
 
 A tiny desktop crab for macOS that shows your **remaining Claude quota** live and keeps you company while Claude Code works.
