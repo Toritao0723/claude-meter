@@ -76,6 +76,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     }
     func L(_ zh: String, _ en: String) -> String { lang == "en" ? en : zh }
     var notifications: Bool { prefs.object(forKey: "notifications") == nil || prefs.bool(forKey: "notifications") }
+    var autoRenew: Bool { prefs.object(forKey: "autoRenew") == nil || prefs.bool(forKey: "autoRenew") }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let existing = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "local.tori.claude-meter")
@@ -100,6 +101,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         UNUserNotificationCenter.current().delegate = self
         if notifications { requestNotifications() }
         startHelper()
+        // The sign-in usually runs out while the Mac sleeps, so sync as soon as it wakes (a second try covers a slow network).
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            for delay in [5.0, 25.0] { DispatchQueue.main.asyncAfter(deadline: .now() + delay) { self?.refreshNow() } }
+        }
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             guard let self else { return }
             self.updateActivity()
@@ -156,6 +161,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         process.standardError = FileHandle.nullDevice
         var environment = ProcessInfo.processInfo.environment
         environment["PYTHONDONTWRITEBYTECODE"] = "1"
+        environment["CLAUDE_METER_RENEW"] = autoRenew ? "1" : "0"
         process.environment = environment
         do { try process.run() } catch { lastPayload["liveProblem"] = "无法启动本地监控"; push(); return }
         helper = process; input = inp; output = out
@@ -283,6 +289,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         let notify = item(L("任务完成与额度通知", "Task and quota notifications"), #selector(toggleNotifications)); notify.state = notifications ? .on : .off; menu.addItem(notify)
         menu.addItem(item(L("测试提醒", "Test notification"), #selector(testNotification)))
         let login = item(L("登录 Mac 时自动启动", "Open at login"), #selector(toggleLogin)); login.state = SMAppService.mainApp.status == .enabled ? .on : .off; menu.addItem(login)
+        let renew = item(L("自动续期登录（需要时启动 Claude Code）", "Auto-renew sign-in (runs Claude Code when needed)"), #selector(toggleRenew)); renew.state = autoRenew ? .on : .off; menu.addItem(renew)
         menu.addItem(.separator())
         for (title, key) in [(L("深色", "Dark"), "dark"), (L("浅色", "Light"), "light"), (L("跟随系统", "Match system"), "auto")] { let i = item(title, #selector(pickTheme(_:))); i.representedObject = key; i.state = theme == key ? .on : .off; menu.addItem(i) }
         let size = item(L("迷你模式", "Compact mode"), #selector(toggleMini)); size.state = mini ? .on : .off; menu.addItem(size)
@@ -299,6 +306,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     @objc func toggleMinimized() { minimized.toggle() }
     @objc func toggleLang() { lang = lang == "en" ? "zh" : "en" }
     @objc func quit() { NSApp.terminate(nil) }
+    @objc func toggleRenew() { prefs.set(!autoRenew, forKey: "autoRenew"); helper?.terminate() }   // the 1-second timer restarts the helper with the new setting
     @objc func toggleNotifications() { prefs.set(!notifications, forKey: "notifications"); if notifications { requestNotifications() } }
     @objc func testNotification() {
         celebrations.append(["state": "done", "label": L("测试提醒 · 小螃蟹已准备好", "Test · the crab is ready")])
@@ -326,7 +334,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     }
     @objc func about() {
         let alert = NSAlert(); alert.messageText = L("Claude Meter · 小螃蟹桌面伴侣", "Claude Meter · desktop crab companion")
-        alert.informativeText = lang == "en" ? "Local Claude adaptation; not an official Anthropic product.\nQuota syncs every 60 s; tasks are checked every 2 s.\nAlerts at 80%, 90% and 100% used.\n\"Done\" means the current response turn ended, not that the whole project is finished.\nQuota uses your Claude Code sign-in, read only on this Mac and sent only to Anthropic's official usage endpoint.\n\nNo model requests.\nTasks cover Claude Code sessions on this Mac from the last 3 days." : "本地 Claude 适配版，非 Anthropic 官方产品。\n额度每 60 秒同步；任务每 2 秒检查。\n提醒阈值：已用 80%、90%、100%。\n完成指当前一轮响应结束，不保证整个项目已完成。\n额度来自 Claude Code 的登录，仅在本机读取，只发往 Anthropic 官方用量接口。\n\n不发起模型任务。\n任务只覆盖这台 Mac 最近 3 天的 Claude Code 会话。"
+        alert.informativeText = lang == "en" ? "Local Claude adaptation; not an official Anthropic product.\nQuota syncs every 60 s; tasks are checked every 2 s.\nAlerts at 80%, 90% and 100% used.\n\"Done\" means the current response turn ended, not that the whole project is finished.\nQuota uses your Claude Code sign-in, read only on this Mac and sent only to Anthropic's official usage endpoint.\n\nThe sign-in lasts about 8 hours. When it runs out (for example after the Mac sleeps) the meter starts Claude Code once so that Claude Code renews it itself. That costs no tokens, and Claude Meter never writes your credentials. Turn it off in the right-click menu.\n\nNo model requests.\nTasks cover Claude Code sessions on this Mac from the last 3 days." :"本地 Claude 适配版，非 Anthropic 官方产品。\n额度每 60 秒同步；任务每 2 秒检查。\n提醒阈值：已用 80%、90%、100%。\n完成指当前一轮响应结束，不保证整个项目已完成。\n额度来自 Claude Code 的登录，仅在本机读取，只发往 Anthropic 官方用量接口。\n登录凭证约 8 小时有效。过期时（例如 Mac 睡眠之后），小螃蟹会启动一次 Claude Code，让 Claude Code 自己续期；不消耗 token，Claude Meter 也不会写入你的凭证。可在右键菜单里关闭。\n\n不发起模型任务。\n任务只覆盖这台 Mac 最近 3 天的 Claude Code 会话。"
         NSApp.activate(ignoringOtherApps: true); alert.runModal()
     }
     func applicationWillTerminate(_ notification: Notification) { timer?.invalidate(); try? input?.fileHandleForWriting.close(); helper?.terminate() }

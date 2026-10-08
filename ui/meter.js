@@ -152,6 +152,14 @@
     const m = Math.round(s / 60);
     return m < 60 ? L(`${m} 分钟`, `${m} min`) : L(`${Math.round(m / 60)} 小时`, `${Math.round(m / 60)} h`);
   };
+  // Why the last refresh failed: a short reason for the footer, and what to do about it for the tooltip.
+  const problems = {
+    'signed-out':    [['请重新登录', 'sign in again'],     ['在终端运行 claude auth login', 'Run "claude auth login" in a terminal']],
+    'login-expired': [['登录已过期', 'login expired'],     ['自动续期未成功：检查网络节点，或在终端运行 claude auth login', 'Auto-renew did not work: check your proxy region, or run "claude auth login" in a terminal']],
+    'expired':       [['登录已过期', 'login expired'],     ['右键菜单里打开「自动续期登录」', 'Turn on "Auto-renew sign-in" in the right-click menu']],
+    'http 403':      [['地区受限', 'region blocked'],      ['Anthropic 不支持当前网络地区：请换到支持地区的代理节点', 'Anthropic blocks this region: switch your proxy to a supported one']],
+    'network':       [['网络不通', 'no connection'],       ['检查网络连接或代理', 'Check your internet connection or proxy']],
+  };
   function liveStatus() {
     const d = S.d;
     const live = d.live && d.liveAt && Date.now() - d.liveAt < 180000;
@@ -160,11 +168,13 @@
     card.dataset.stale = String(!live);
     $('quota').title = L(`剩余额度 ${$('left').textContent}% · ${live ? '实时' : '待同步'}${last ? ` · ${since(last)}前更新` : ''}`, `${$('left').textContent}% left · ${live ? 'live' : 'not synced'}${last ? ` · updated ${since(last)} ago` : ''}`);
     for (const el of [foot, mini]) { el.classList.toggle('live', !!live); el.classList.toggle('stale', !live); }
+    const problem = problems[d.liveProblemCode];
+    foot.title = !live && problem ? L(...problem[1]) : '';
     if (live) {
       foot.innerHTML = L(`<i class="dot"></i><b>实时</b> · ${since(d.liveAt)}前更新`, `<i class="dot"></i><b>Live</b> · updated ${since(d.liveAt)} ago`);
       mini.innerHTML = L(`<i class="dot"></i>实时 · ${since(d.liveAt)}前`, `<i class="dot"></i>Live · ${since(d.liveAt)} ago`);
     } else {
-      const why = last ? L(`上次 ${since(last)}前`, `last ${since(last)} ago`) : L('点击刷新', 'click to refresh');
+      const why = problem ? L(...problem[0]) : last ? L(`上次 ${since(last)}前`, `last ${since(last)} ago`) : L('点击刷新', 'click to refresh');
       foot.innerHTML = `<b>${L('待同步', 'Not synced')}</b> · ${why}`;
       mini.innerHTML = L('待同步', 'Not synced');   // compact bar is narrow: status word only, the time stays in the tooltip and full panel
     }
@@ -254,7 +264,7 @@
     const en = q.get('lang') === 'en';
     const session = { kind: 'session', known: true, idle: false, ...states[q.get('state') || 'ok'] };
     update({
-      now, plan: 'Pro', syncedAt: now - 12 * 60e3, live: q.get('live') !== '0', liveAt: now - 20e3,
+      now, plan: 'Pro', syncedAt: now - 12 * 60e3, live: q.get('live') !== '0', liveAt: now - 20e3, liveProblemCode: q.get('problem') || undefined,
       lang: q.get('lang') || 'zh', theme: q.get('theme') || 'dark', mini: q.get('mini') === '1', minimized:q.get('minimized') === '1',
       taskNav:{ items:q.get('activity') === 'idle' ? [] : [
         { id:'00000000-0000-0000-0000-000000000001', title:en ? 'Demo · Polish the crab companion' : '演示 · 优化小螃蟹桌面伴侣', state:q.get('activity') || 'working' },

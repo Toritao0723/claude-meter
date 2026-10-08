@@ -3,6 +3,10 @@ from pathlib import Path
 import tempfile
 import time
 import unittest
+import urllib.error
+from unittest import mock
+
+import bridge
 from bridge import Session, find_token, normalize_usage
 
 
@@ -48,6 +52,99 @@ class SessionTests(unittest.TestCase):
         session = Session(path)
         session.scan()
         self.assertEqual(session.snapshot(time.time())['state'], 'working')
+
+
+class RenewTests(unittest.TestCase):
+    """Renewal is delegated to Claude Code itself. Everything here is mocked: no Keychain, no real command, no network."""
+
+    def setUp(self):
+        self.past = (time.time() - 60) * 1000
+        self.later = (time.time() + 8 * 3600) * 1000
+        for patch in (mock.patch.object(bridge, 'STATE', Path(tempfile.mkdtemp())),
+                      mock.patch.object(bridge, '_last_renew', 0.0),
+                      mock.patch.object(bridge, 'AUTO_RENEW', True),
+                      mock.patch.object(bridge, 'find_claude_cli', return_value='/fake/claude')):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def tokens(self, *reads):
+        return mock.patch.object(bridge, 'read_token', side_effect=list(reads))
+
+    def ran(self, cost=0):
+        return mock.patch.object(bridge.subprocess, 'run', return_value=mock.Mock(stdout=json.dumps({'total_cost_usd': cost})))
+
+    def test_valid_token_does_not_start_claude_code(self):
+        with self.tokens(('good', self.later)), self.ran() as run:
+            self.assertEqual(bridge.ensure_fresh(), 'good')
+        run.assert_not_called()
+
+    def test_expired_token_is_renewed_by_claude_code(self):
+        with self.tokens(('old', self.past), ('new', self.later)), self.ran() as run:
+            self.assertEqual(bridge.ensure_fresh(), 'new')
+        command, options = run.call_args[0][0], run.call_args[1]
+        self.assertEqual(command[:3], ['/fake/claude', '-p', '/claude-meter-renew'])
+        self.assertEqual(options['stdin'], bridge.subprocess.DEVNULL)
+
+    def test_token_still_expired_after_renewal_reports_login_expired(self):
+        with self.tokens(('old', self.past), ('old', self.past)), self.ran():
+            with self.assertRaisesRegex(RuntimeError, 'login-expired'):
+                bridge.ensure_fresh()
+
+    def test_claude_code_is_started_at_most_once_per_retry_window(self):
+        with self.tokens(('old', self.past), ('old', self.past), ('old', self.past), ('old', self.past)), self.ran() as run:
+            for _ in range(2):
+                with self.assertRaises(RuntimeError):
+                    bridge.ensure_fresh()
+        self.assertEqual(run.call_count, 1)
+
+    def test_a_run_that_costs_tokens_switches_renewal_off(self):
+        with self.tokens(('old', self.past), ('old', self.past)), self.ran(cost=0.02):
+            with self.assertRaisesRegex(RuntimeError, 'expired'):
+                bridge.ensure_fresh()
+        self.assertFalse(bridge.AUTO_RENEW)
+
+    def test_missing_claude_code_cannot_renew(self):
+        with self.tokens(('old', self.past), ('old', self.past)), self.ran() as run, \
+                mock.patch.object(bridge, 'find_claude_cli', return_value=None):
+            with self.assertRaisesRegex(RuntimeError, 'login-expired'):
+                bridge.ensure_fresh()
+        run.assert_not_called()
+
+    def test_renewal_switched_off_by_the_user(self):
+        with self.tokens(('old', self.past), ('old', self.past)), self.ran() as run, mock.patch.object(bridge, 'AUTO_RENEW', False):
+            with self.assertRaisesRegex(RuntimeError, 'expired'):
+                bridge.ensure_fresh()
+        run.assert_not_called()
+
+    def test_refused_token_triggers_renewal_even_if_it_looks_valid(self):
+        with self.tokens(('same', self.later), ('newer', self.later)), self.ran() as run:
+            self.assertEqual(bridge.ensure_fresh(rejected='same'), 'newer')
+        run.assert_called_once()
+
+    def test_a_401_is_retried_once_with_the_renewed_token(self):
+        refused = urllib.error.HTTPError('u', 401, 'no', {}, None)
+        with mock.patch.object(bridge, 'ensure_fresh', side_effect=['t1', 't2']) as fresh, \
+                mock.patch.object(bridge, '_get_usage', side_effect=[refused, {'five_hour': {}}]):
+            self.assertEqual(bridge.fetch_usage(), {'five_hour': {}})
+        self.assertEqual(fresh.call_args_list[1], mock.call(rejected='t1'))
+
+    def test_a_second_401_gives_up(self):
+        refused = urllib.error.HTTPError('u', 401, 'no', {}, None)
+        with mock.patch.object(bridge, 'ensure_fresh', side_effect=['t1', 't2']), \
+                mock.patch.object(bridge, '_get_usage', side_effect=[refused, refused]):
+            with self.assertRaisesRegex(RuntimeError, 'login-expired'):
+                bridge.fetch_usage()
+
+    def test_claude_code_gets_the_system_proxy_and_no_bypass(self):
+        with mock.patch.dict(bridge.os.environ, {'NO_PROXY': '*', 'HTTPS_PROXY': ''}), \
+                mock.patch.object(bridge, '_proxies', return_value={'https': 'http://127.0.0.1:7897'}):
+            env = bridge._proxy_env()
+        self.assertNotIn('NO_PROXY', env)
+        self.assertEqual(env['HTTPS_PROXY'], 'http://127.0.0.1:7897')
+
+    def test_every_error_code_has_a_message(self):
+        for code in ('signed-out', 'login-expired', 'expired', 'http 403', 'network'):
+            self.assertIn(code, bridge.PROBLEMS)
 
 
 if __name__ == '__main__':

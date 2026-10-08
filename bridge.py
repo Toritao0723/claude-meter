@@ -90,8 +90,8 @@ def read_token():
     raise RuntimeError('signed-out')
 
 
-def _opener():
-    """Route through the proxy the Mac is actually using.
+def _proxies():
+    """The proxy to use: one set in the environment, else the macOS system proxy.
 
     Python ignores the macOS system proxy as soon as any *_proxy variable exists in the environment
     (even NO_PROXY=* or an empty HTTPS_PROXY inherited from a terminal), which silently sends the
@@ -104,23 +104,105 @@ def _opener():
             system = {k: v for k, v in urllib.request.getproxies_macosx_sysconf().items() if k in ('http', 'https') and v}
         except Exception:
             pass
-    proxies = env or system
-    handlers = [urllib.request.ProxyHandler(proxies)] if proxies else [urllib.request.ProxyHandler({})]
-    return urllib.request.build_opener(*handlers)
+    return env or system
 
 
-def fetch_usage():
+def _opener():
+    return urllib.request.build_opener(urllib.request.ProxyHandler(_proxies()))
+
+
+def ensure_fresh(rejected=None):
+    """An access token that is valid now: the stored one, or the new one Claude Code leaves behind after renewing."""
     token, expires = read_token()
-    if isinstance(expires, (int, float)) and expires / 1000 < time.time():
-        raise RuntimeError('expired')
+    soon = isinstance(expires, (int, float)) and expires / 1000 - time.time() < RENEW_MARGIN
+    if token != rejected and not soon:
+        return token
+    renew_with_claude_code()
+    token, expires = read_token()
+    expired = isinstance(expires, (int, float)) and expires / 1000 < time.time()
+    if token == rejected or expired:
+        raise RuntimeError('login-expired' if AUTO_RENEW else 'expired')
+    return token
+
+
+def _get_usage(token):
     request = urllib.request.Request(USAGE_URL, headers={
         'Authorization': f'Bearer {token}', 'anthropic-beta': 'oauth-2025-04-20',
         'Content-Type': 'application/json', 'User-Agent': 'claude-meter/1.0'})
+    with _opener().open(request, timeout=20) as response:
+        return json.load(response)
+
+
+def fetch_usage():
+    token = ensure_fresh()
+    for attempt in range(2):
+        try:
+            return _get_usage(token)
+        except urllib.error.HTTPError as error:
+            if error.code != 401:
+                raise RuntimeError(f'http {error.code}')
+            if attempt:
+                raise RuntimeError('login-expired')
+            token = ensure_fresh(rejected=token)   # a token that looked valid was refused: pick up a newer one or renew
+
+
+RENEW_MARGIN = 300      # ask Claude Code to renew when the access token has under 5 minutes left
+RENEW_RETRY = 300       # ...but start it at most once every 5 minutes
+AUTO_RENEW = os.environ.get('CLAUDE_METER_RENEW', '1') != '0'
+_last_renew = 0.0
+
+PROBLEMS = {
+    'signed-out': '未登录 Claude Code，请在终端运行 claude auth login',
+    'login-expired': '登录已过期，自动续期未成功；请检查网络节点，或在终端运行 claude auth login',
+    'expired': '登录已过期，且自动续期已关闭',
+    'http 403': '访问被拒绝（403），请切换到 Claude 支持地区的网络节点',
+    'network': '同步失败，请检查网络连接',
+}
+
+
+def _proxy_env():
+    """Environment for the Claude Code command: the proxy this Mac uses, and no NO_PROXY that would route around it."""
+    env = {k: v for k, v in os.environ.items() if k.lower() != 'no_proxy'}
+    proxies = _proxies()
+    for scheme in ('http', 'https'):
+        if proxies.get(scheme) and not env.get(f'{scheme.upper()}_PROXY'):
+            env[f'{scheme.upper()}_PROXY'] = proxies[scheme]
+    return env
+
+
+def find_claude_cli():
+    candidates = [os.environ.get('CLAUDE_METER_CLI'), HOME / '.local/bin/claude', HOME / '.claude/local/claude',
+                  '/opt/homebrew/bin/claude', '/usr/local/bin/claude', HOME / '.npm-global/bin/claude', HOME / '.bun/bin/claude']
+    for path in candidates:
+        if path and os.access(str(path), os.X_OK):
+            return str(path)
+    return shutil.which('claude')
+
+
+def renew_with_claude_code():
+    """Start Claude Code once and let it renew its own sign-in. This program never writes any credentials.
+
+    Any `claude` start-up swaps an expired access token for a new one, and an unknown slash command is answered
+    locally ("Unknown skill") without a model request, so this costs no tokens. If a run ever reports a cost,
+    automatic renewal switches itself off for the rest of the session."""
+    global AUTO_RENEW, _last_renew
+    if not AUTO_RENEW or time.time() - _last_renew < RENEW_RETRY:
+        return False
+    cli = find_claude_cli()
+    if not cli:
+        return False
+    _last_renew = time.time()
+    STATE.mkdir(parents=True, exist_ok=True, mode=0o700)
     try:
-        with _opener().open(request, timeout=20) as response:
-            return json.load(response)
-    except urllib.error.HTTPError as error:
-        raise RuntimeError('expired' if error.code == 401 else f'http {error.code}')
+        run = subprocess.run([cli, '-p', '/claude-meter-renew', '--output-format', 'json', '--no-session-persistence'],
+                             cwd=STATE, env=_proxy_env(), stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=90)
+        cost = json.loads(run.stdout).get('total_cost_usd', 0)
+    except (OSError, subprocess.SubprocessError, ValueError, AttributeError):
+        return False
+    if cost:
+        AUTO_RENEW = False
+        return False
+    return True
 
 
 def text_of(content):
@@ -296,12 +378,9 @@ def main():
                 os.chmod(tmp, 0o600)
                 tmp.replace(STATE / 'usage.json')
             except Exception as error:
-                reason = str(error)
-                problem = ('未登录 Claude Code，请在终端运行 claude 登录' if reason == 'signed-out' else
-                           '登录已过期，打开 Claude Code 发一条消息即可刷新' if reason == 'expired' else
-                           '同步失败，请检查网络连接')
+                code = str(error) if str(error) in PROBLEMS else 'network'
                 with lock:
-                    current.update(live=False, liveProblem=problem)
+                    current.update(live=False, liveProblem=PROBLEMS[code], liveProblemCode=code)
             refresh.wait(60)
             refresh.clear()
 
