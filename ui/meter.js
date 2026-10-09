@@ -173,7 +173,7 @@
     foot.title = !live && problem ? L(...problem[1]) : '';
     if (live) {
       foot.innerHTML = L(`<i class="dot"></i><b>实时</b> · ${since(d.liveAt)}前更新`, `<i class="dot"></i><b>Live</b> · updated ${since(d.liveAt)} ago`);
-      mini.innerHTML = L(`<i class="dot"></i>实时 · ${since(d.liveAt)}前`, `<i class="dot"></i>Live · ${since(d.liveAt)} ago`);
+      mini.innerHTML = L(`<i class="dot"></i>实时 · ${since(d.liveAt)}`, `<i class="dot"></i>Live · ${since(d.liveAt)}`);   // compact bar is narrow: no "ago"; the full panel says "updated 31s ago"
     } else {
       const why = problem ? L(...problem[0]) : last ? L(`上次 ${since(last)}前`, `last ${since(last)} ago`) : L('点击刷新', 'click to refresh');
       foot.innerHTML = `<b>${L('待同步', 'Not synced')}</b> · ${why}`;

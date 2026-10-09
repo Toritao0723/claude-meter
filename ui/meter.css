@@ -93,7 +93,7 @@ body { -webkit-user-select:none; user-select:none; cursor:default; -webkit-font-
 .task-title:focus-visible, .nav-btn:focus-visible { outline:2px solid var(--focus); outline-offset:1px; }
 .card.has-tasks .controls { top:55px; }
 
-html.mini .card { width:344px; padding:9px 12px; grid-template-columns:44px 124px minmax(0,1fr) 22px; column-gap:8px; grid-template-areas:"nav nav nav nav" "left lane reset btn"; align-items:center; }
+html.mini .card { width:360px; padding:9px 12px; grid-template-columns:44px 124px minmax(0,1fr) 22px; column-gap:8px; grid-template-areas:"nav nav nav nav" "left lane reset btn"; align-items:center; }
 html.mini .head, html.mini .tags, html.mini .week, html.mini .foot, html.mini .reset .at { display:none; }
 html.mini .reset .label { font-size:8px; }
 html.mini .reset { gap:3px; padding:0; }
@@ -101,6 +101,7 @@ html.mini .left, html.mini .reset { margin:0; }
 html.mini .left { justify-self:center; gap:4px; }
 /* Pin both text columns to the lane's top and bottom so their first and last lines align. */
 html.mini .left, html.mini .reset { align-self:stretch; justify-content:space-between; padding:4px 0 3px; }
+html.mini .reset { padding-left:8px; min-width:0; }   /* keep the text clear of the picture, whatever font the Mac renders */
 html.mini .big-unit, html.mini .mini-live { line-height:1; }
 html.mini .big { font-size:31px; }
 html.mini .big-unit { font-size:9px; }
