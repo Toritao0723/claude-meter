@@ -6,7 +6,7 @@
 # 自检脚本：找出额度为什么没有显示。不会打印令牌，也不会修改任何东西。
 
 main() {
-  local APP="${CLAUDE_METER_DIR:-$HOME/Applications}/Claude Meter.app" failed=0 cli="" country="" proxy_arg=()
+  local APP="${CLAUDE_METER_DIR:-$HOME/Applications}/Claude Meter.app" failed=0 cli="" cli_in=0 country="" proxy_arg=()
   ok()   { printf '  \033[32m✓\033[0m %s\n' "$1"; }
   bad()  { printf '  \033[31m✗\033[0m %s\n' "$1"; failed=1; }
   note() { printf '      → %s\n' "$1"; }
@@ -60,7 +60,7 @@ main() {
   else
     ok "found · 已找到: $cli ($("$cli" --version </dev/null 2>/dev/null | head -1))"
     if "$cli" auth status </dev/null 2>/dev/null | grep -q '"loggedIn": true'; then
-      ok "signed in · 已登录"
+      ok "signed in · 已登录"; cli_in=1
     else
       bad "not signed in · 没有登录"
       note "curl -fsSL https://raw.githubusercontent.com/Toritao0723/claude-meter/main/setup-claude-code.sh | bash"
@@ -68,6 +68,18 @@ main() {
       note "by hand instead / 手动方式:  ${login_cmd/\~\/.local\/bin\/claude/$cli}"
       note "use a network node in a supported region such as Japan · 请用日本等受支持地区的网络节点"
     fi
+  fi
+
+  if [ -n "$cli" ]; then
+    local v items
+    echo "   details, names only and no secrets · 详情（只有名称，不含任何密钥）"
+    printf '      claude auth status: %s\n' "$("$cli" auth status </dev/null 2>/dev/null | grep -E '"(loggedIn|authMethod|apiProvider)"' | tr -d ' \n')"
+    for v in CLAUDE_CONFIG_DIR ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_BASE_URL CLAUDE_CODE_USE_BEDROCK CLAUDE_CODE_USE_VERTEX; do
+      [ -n "${!v:-}" ] && printf '      environment variable %s is set (value not shown) · 已设置环境变量 %s（不显示内容）\n' "$v" "$v"
+    done
+    items="$(security dump-keychain 2>/dev/null | grep -i '"svce"' | grep -i 'claude code' | sed 's/.*="//; s/"$//' | sort -u | tr '\n' ';' | sed 's/;$//')"
+    printf '      saved logins in the Keychain · 钥匙串里的登录项: %s\n' "${items:-(none · 没有)}"
+    [ -f "$HOME/.claude/.credentials.json" ] && echo "      file ~/.claude/.credentials.json exists · 存在"
   fi
 
   echo "5. Network and region · 网络与地区"
@@ -107,7 +119,10 @@ PY
     case "$out" in
       OK*)   ok "works · 成功: ${out#OK }"; note "If the crab still says Not synced, quit and reopen Claude Meter, or wait a minute · 如果小螃蟹仍显示未同步，退出并重新打开，或等一分钟" ;;
       "FAIL http 429"*) ok "the sign-in works, but Anthropic says too many requests right now; the meter retries by itself in a few minutes · 登录没问题，只是请求太频繁被暂时限流，几分钟后会自动重试" ;;
-      FAIL*) bad "failed · 失败: ${out#FAIL }" ;;
+      FAIL*) bad "failed · 失败: ${out#FAIL }"
+             if [ "$cli_in" = 1 ] && printf '%s' "$out" | grep -q 'signed-out'; then
+               note "Claude Code says it is signed in, but the meter cannot find that login. Send the 'details' lines under step 4 to the developer · Claude Code 显示已登录，但小螃蟹读不到这份登录，请把第 4 步下面的「详情」几行发给开发者"
+             fi ;;
       *)     bad "unexpected result · 未知结果: $(printf '%s' "$out" | tail -2 | tr '\n' ' ')" ;;
     esac
   else

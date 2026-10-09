@@ -154,7 +154,7 @@
   };
   // Why the last refresh failed: a short reason for the footer, and what to do about it for the tooltip.
   const problems = {
-    'signed-out':    [['请重新登录', 'sign in again'],     ['在终端运行 claude auth login', 'Run "claude auth login" in a terminal']],
+    'signed-out':    [['请先登录 Claude Code', 'sign in to Claude Code'], ['这台 Mac 上的 Claude Code 还没有安装或登录（和 Claude 应用的登录是两回事）：运行 README 里的 setup-claude-code.sh 一条命令即可', 'Claude Code is not installed or signed in on this Mac (a separate login from the Claude app): run the one setup-claude-code.sh command from the README']],
     'login-expired': [['登录已过期', 'login expired'],     ['自动续期未成功：检查网络节点，或在终端运行 claude auth login', 'Auto-renew did not work: check your proxy region, or run "claude auth login" in a terminal']],
     'expired':       [['登录已过期', 'login expired'],     ['右键菜单里打开「自动续期登录」', 'Turn on "Auto-renew sign-in" in the right-click menu']],
     'http 403':      [['地区受限', 'region blocked'],      ['Anthropic 不支持当前网络地区：请换到支持地区的代理节点', 'Anthropic blocks this region: switch your proxy to a supported one']],
