@@ -27,6 +27,62 @@ class QuotaTests(unittest.TestCase):
         self.assertIsNone(find_token({'mcpOAuth': {}}))
 
 
+class LoginReadingTests(unittest.TestCase):
+    """Two Keychain items can share the name "Claude Code-credentials": the sign-in, and one with only MCP connector data."""
+
+    def setUp(self):
+        self.folder = Path(tempfile.mkdtemp())
+        patch = mock.patch.object(bridge, 'CLAUDE_HOME', self.folder)
+        patch.start()
+        self.addCleanup(patch.stop)
+        self.future = (time.time() + 3600) * 1000
+        self.past = (time.time() - 60) * 1000
+
+    def login(self, token, expires=None):
+        return json.dumps({'claudeAiOauth': {'accessToken': token, 'expiresAt': expires or self.future}, 'mcpOAuth': {}})
+
+    def keychain(self, *blobs):
+        return mock.patch.object(bridge, '_keychain_blobs', return_value=list(blobs))
+
+    def test_the_item_with_only_connector_data_is_skipped(self):
+        with self.keychain(json.dumps({'mcpOAuth': {'figma': {}}}), self.login('real')):
+            self.assertEqual(bridge.read_token()[0], 'real')
+
+    def test_a_valid_token_is_preferred_over_an_expired_one(self):
+        with self.keychain(self.login('old', self.past), self.login('new')):
+            self.assertEqual(bridge.read_token()[0], 'new')
+
+    def test_an_expired_token_is_still_returned_so_it_can_be_renewed(self):
+        with self.keychain(self.login('old', self.past)):
+            self.assertEqual(bridge.read_token()[0], 'old')
+
+    def test_only_connector_data_means_signed_out(self):
+        with self.keychain(json.dumps({'mcpOAuth': {'figma': {}}})):
+            with self.assertRaisesRegex(RuntimeError, 'signed-out'):
+                bridge.read_token()
+
+    def test_the_credentials_file_is_used_when_the_keychain_has_nothing(self):
+        (self.folder / '.credentials.json').write_text(self.login('from-file'))
+        with self.keychain():
+            self.assertEqual(bridge.read_token()[0], 'from-file')
+
+    def test_the_logged_in_users_item_is_asked_for_first_then_any(self):
+        answers = [mock.Mock(returncode=0, stdout=self.login('mine') + '\n'), mock.Mock(returncode=0, stdout='{"mcpOAuth":{}}\n')]
+        with mock.patch.object(bridge.getpass, 'getuser', return_value='tori'), \
+                mock.patch.object(bridge.subprocess, 'run', side_effect=answers) as run:
+            blobs = bridge._keychain_blobs()
+        first, second = run.call_args_list[0][0][0], run.call_args_list[1][0][0]
+        self.assertEqual(first[:5], ['/usr/bin/security', 'find-generic-password', '-a', 'tori', '-s'])
+        self.assertNotIn('-a', second)
+        self.assertEqual(len(blobs), 2)
+
+    def test_the_same_item_is_not_listed_twice(self):
+        same = mock.Mock(returncode=0, stdout=self.login('mine') + '\n')
+        with mock.patch.object(bridge.getpass, 'getuser', return_value='tori'), \
+                mock.patch.object(bridge.subprocess, 'run', side_effect=[same, same]):
+            self.assertEqual(len(bridge._keychain_blobs()), 1)
+
+
 class SessionTests(unittest.TestCase):
     def write(self, rows):
         folder = tempfile.mkdtemp()

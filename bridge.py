@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Read-only Claude account usage + local Claude Code session observer. No model requests."""
 import datetime as dt
+import getpass
 import json
 import os
 from pathlib import Path
@@ -66,28 +67,52 @@ def find_token(value):
     return None
 
 
-def read_token():
-    """Claude Code's own sign-in: macOS Keychain first, then ~/.claude/.credentials.json."""
-    blobs = []
+def _keychain_blobs():
+    """What the Keychain holds under "Claude Code-credentials".
+
+    Several items can share that name under different accounts: one holds the sign-in, another may hold only MCP
+    connector data. A search without an account returns just one of them, and it can be the wrong one, which made the
+    meter report "signed out" while Claude Code was signed in. So ask for the logged-in user's item first, exactly like
+    Claude Code does, and only then for any item."""
     try:
-        out = subprocess.run(['/usr/bin/security', 'find-generic-password', '-s', KEYCHAIN_SERVICE, '-w'],
-                             capture_output=True, text=True, timeout=30)
-        if out.returncode == 0:
-            blobs.append(out.stdout.strip())
-    except (OSError, subprocess.SubprocessError):
-        pass
+        user = getpass.getuser()
+    except (OSError, KeyError):
+        user = os.environ.get('USER', '')
+    blobs = []
+    for account in (['-a', user] if user else [], []):
+        try:
+            out = subprocess.run(['/usr/bin/security', 'find-generic-password', *account, '-s', KEYCHAIN_SERVICE, '-w'],
+                                 capture_output=True, text=True, timeout=30)
+        except (OSError, subprocess.SubprocessError):
+            continue
+        text = out.stdout.strip()
+        if out.returncode == 0 and text and text not in blobs:
+            blobs.append(text)
+    return blobs
+
+
+def read_token():
+    """Claude Code's own sign-in: macOS Keychain first, then ~/.claude/.credentials.json. Prefers a token still valid."""
+    blobs = _keychain_blobs()
     try:
         blobs.append((CLAUDE_HOME / '.credentials.json').read_text())
     except OSError:
         pass
+    found = []
     for blob in blobs:
         try:
-            found = find_token(json.loads(blob))
+            token = find_token(json.loads(blob))
         except ValueError:
-            found = (blob, None) if blob.startswith('sk-ant-oat') else None
-        if found:
-            return found
-    raise RuntimeError('signed-out')
+            token = (blob, None) if blob.startswith('sk-ant-oat') else None
+        if token:
+            found.append(token)
+    if not found:
+        raise RuntimeError('signed-out')
+    now = time.time()
+    for token in found:
+        if not isinstance(token[1], (int, float)) or token[1] / 1000 > now:
+            return token
+    return found[0]
 
 
 def _proxies():

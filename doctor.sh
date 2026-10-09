@@ -78,7 +78,8 @@ main() {
       [ -n "${!v:-}" ] && printf '      environment variable %s is set (value not shown) · 已设置环境变量 %s（不显示内容）\n' "$v" "$v"
     done
     items="$(security dump-keychain 2>/dev/null | grep -i '"svce"' | grep -i 'claude code' | sed 's/.*="//; s/"$//' | sort -u | tr '\n' ';' | sed 's/;$//')"
-    printf '      saved logins in the Keychain · 钥匙串里的登录项: %s\n' "${items:-(none · 没有)}"
+    accounts="$(security dump-keychain 2>/dev/null | awk '/^keychain:/ {acct=""} /"acct"<blob>=/ {acct=$0; sub(/.*="/, "", acct); sub(/"$/, "", acct)} /"svce"<blob>="Claude Code-credentials"/ {print acct}' | sort | tr '\n' ',' | sed 's/,$//; s/,/, /g')"
+    printf '      saved logins in the Keychain · 钥匙串里的登录项: %s%s\n' "${items:-(none · 没有)}" "${accounts:+  (accounts · 账号: $accounts)}"
     [ -f "$HOME/.claude/.credentials.json" ] && echo "      file ~/.claude/.credentials.json exists · 存在"
   fi
 
